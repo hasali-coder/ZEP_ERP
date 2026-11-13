@@ -1,0 +1,6 @@
+{
+  "name": "MyZavo",
+  "description": "Modern, cloud-based financial management workspace for invoicing, payment tracking, expense management, cash flow monitoring, and customer statements.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

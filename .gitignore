@@ -1,0 +1,13 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+.myzavo-backups/
+.myzavo-change-logs/
+.env
+.env.*
+.vercel/

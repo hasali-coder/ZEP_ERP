@@ -1,0 +1,184 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    
+    --color-deep-navy: #0D1B33;
+    --color-interactive-navy: #244A73;
+    --color-interactive-navy-hover: #1B3959;
+    --color-bg: #F6F8FB;
+    --color-surface: #FFFFFF;
+    --color-primary-text: #182539;
+    --color-secondary-text: #69788B;
+    --color-border: #E2E8F0;
+    --color-success: #1F806F;
+    --color-warning: #C38754;
+    --color-error: #BF5963;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--color-bg);
+    color: var(--color-primary-text);
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+  }
+
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  :where(button, a, input, select, textarea):focus-visible {
+    outline: 2px solid var(--color-interactive-navy);
+    outline-offset: 2px;
+  }
+}
+
+/* A shared visual language for the financial workspaces. The original
+   Overview dashboard deliberately does not use these workspace selectors. */
+@layer components {
+  .mz-workspace .mz-panel,
+  .mz-workspace .mz-toolbar {
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgb(13 27 51 / 4%);
+  }
+
+  .mz-workspace .mz-toolbar {
+    padding: 18px 20px;
+  }
+
+  .mz-workspace .mz-table {
+    font-size: 13px;
+    line-height: 1.55;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .mz-workspace .mz-table thead {
+    background: #F8FAFD;
+  }
+
+  .mz-workspace .mz-table thead th {
+    color: #63758A;
+    font-size: 11px;
+    font-weight: 650;
+    letter-spacing: .055em;
+  }
+
+  .mz-workspace .mz-table tbody tr {
+    transition: background-color 140ms ease;
+  }
+
+  .mz-workspace .mz-table tbody tr:hover {
+    background: #F5F8FC;
+  }
+
+  .mz-workspace .print-page {
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgb(13 27 51 / 4%);
+  }
+
+  .mz-workspace table thead th {
+    font-size: 11px;
+    letter-spacing: .045em;
+    color: #63758A;
+  }
+
+  .mz-workspace table tbody tr {
+    transition: background-color 140ms ease;
+  }
+
+  .mz-workspace table tbody tr:hover {
+    background: #F5F8FC;
+  }
+
+  .mz-workspace .mz-search-input {
+    min-height: 38px;
+    font-size: 13px;
+    background-color: #FFFFFF;
+  }
+
+  .mz-workspace .mz-segmented-control {
+    border-radius: 10px;
+    padding: 4px;
+  }
+
+  .mz-workspace .mz-segmented-control button {
+    min-height: 30px;
+  }
+
+  .mz-workspace :where(input:not([type="checkbox"]), select, textarea) {
+    font-size: 13px;
+  }
+
+  .mz-report-tabs {
+    scrollbar-width: none;
+    scroll-behavior: smooth;
+  }
+
+  .mz-report-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mz-report-arrow {
+    display: grid;
+    place-items: center;
+    flex: 0 0 30px;
+    height: 34px;
+    border-radius: 8px;
+    color: var(--color-interactive-navy);
+    transition: background-color 140ms ease;
+  }
+
+  .mz-report-arrow:hover {
+    background: #EDF3FA;
+  }
+
+  .mz-modal :where(input:not([type="checkbox"]), select, textarea) {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .mz-modal :where(input:not([type="checkbox"]), select, textarea):focus {
+    border-color: var(--color-interactive-navy);
+  }
+
+  @media (max-width: 640px) {
+    .mz-workspace .mz-toolbar {
+      padding: 14px;
+    }
+  }
+}
+
+/* Print Styles for Invoices, Statements, and Reports */
+@media print {
+  body {
+    background-color: #FFFFFF !important;
+    color: #000000 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-page {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
