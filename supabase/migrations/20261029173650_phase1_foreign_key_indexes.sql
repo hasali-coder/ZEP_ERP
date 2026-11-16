@@ -7,3 +7,4 @@ create index financial_transactions_contact_idx on public.financial_transactions
 create index financial_transactions_expense_idx on public.financial_transactions (business_id, expense_id);
 create index invoices_quotation_idx on public.invoices (business_id, source_quotation_id);
 create index supplier_bills_supplier_idx on public.supplier_bills (business_id, supplier_id);
+;

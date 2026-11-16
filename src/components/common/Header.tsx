@@ -48,6 +48,9 @@ export const Header: React.FC<HeaderProps> = ({
     contacts: { title: 'Contacts Directory', subtitle: 'Customer and supplier profiles with financial history' },
     reports: { title: 'Financial Reports', subtitle: 'Income statements, aging, cash flow and Statements of Account' },
     settings: { title: 'Business Settings', subtitle: 'Branding, tax identification, payment instructions and accounts' },
+    reconciliation: { title: 'Reconciliation', subtitle: 'Match cash, bank and mobile money statements to recorded transactions' },
+    financial_periods: { title: 'Financial Periods', subtitle: 'Manage monthly financial closing and reopening' },
+    team_access: { title: 'Team & Access', subtitle: 'Manage business members, roles and invitations' },
     integrations: { title: 'Integrations', subtitle: 'Preview external service connections (not yet active)' },
   };
 

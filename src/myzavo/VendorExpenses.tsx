@@ -109,6 +109,7 @@ function PayDue({due,onClose,onPaid}:{due:Due;onClose:()=>void;onPaid:()=>void})
 type ListProps={onOpenCreateExpense:()=>void;onOpenCreateBill:()=>void;onRecordBillPayment?:(billId:string)=>void;onEditExpense?:(expense:Expense)=>void};
 export function VendorExpensesView({onOpenCreateExpense,onOpenCreateBill}:ListProps){
  const {suppliers}=useFinancial();const [active,setActive]=useState<'direct'|'recurring'|'bill'>('direct');
+ const [settlementBill,setSettlementBill]=useState<BillRow|null>(null);
  const [expenses,setExpenses]=useState<ExpenseRow[]>([]),[bills,setBills]=useState<BillRow[]>([]);
  const [schedules,setSchedules]=useState<Schedule[]>([]),[dues,setDues]=useState<Due[]>([]);
  const [search,setSearch]=useState(''),[loading,setLoading]=useState(true),[error,setError]=useState('');
@@ -148,8 +149,323 @@ export function VendorExpensesView({onOpenCreateExpense,onOpenCreateBill}:ListPr
    <table className="w-full text-left text-sm"><thead className="bg-[#F5F8FB] text-xs uppercase text-[#69788B]"><tr>{['Due Date','Vendor','Description','Amount','Status','Action'].map(v=><th key={v} className="p-3">{v}</th>)}</tr></thead><tbody>{dues.filter(d=>matches(d.description,supplierName(d.supplier_id))).map(d=><tr key={d.id} className="border-t"><td className="p-3">{d.due_date}</td><td className="p-3">{supplierName(d.supplier_id)}</td><td className="p-3">{d.description}</td><td className="p-3 font-semibold">{money(d.amount_minor,d.currency)}</td><td className="p-3">{d.status==='paid'?<span className="inline-flex text-green-700 items-center gap-1"><CheckCircle2 className="w-4 h-4"/>Paid</span>:<span className="text-[#C38754]">Awaiting payment</span>}</td><td className="p-3">{d.status==='pending'&&<button type="button" onClick={()=>setPayDue(d)} className="rounded bg-[#244A73] px-3 py-2 text-xs text-white">Record Payment</button>}</td></tr>)}{dues.length===0&&<tr><td colSpan={6} className="p-8 text-center text-[#69788B]">No scheduled payments due yet.</td></tr>}</tbody></table>
   </div>
  </>}
- {!loading&&active!=='recurring'&&<div className={`${card} overflow-x-auto`}><table className="w-full text-left text-sm"><thead className="bg-[#F5F8FB] text-xs uppercase text-[#69788B]"><tr>{(active==='direct'?['Date','Vendor','Description','Category','Amount','Method']:['Date','Supplier','Invoice #','Due Date','Balance','Status']).map(v=><th className="p-3" key={v}>{v}</th>)}</tr></thead><tbody>{(renderRows as (ExpenseRow|BillRow)[]).map(r=><tr key={r.id} className="border-t">{'expense_date' in r?<><td className="p-3">{r.expense_date}</td><td className="p-3">{r.supplier_id?supplierName(r.supplier_id):r.supplier_name||'Unlinked legacy record'}</td><td className="p-3">{r.description}</td><td className="p-3">{r.category}</td><td className="p-3 font-semibold">{money(r.amount_minor,r.currency)}</td><td className="p-3">{r.payment_method||'—'}</td></>:<><td className="p-3">{r.issue_date}</td><td className="p-3">{supplierName(r.supplier_id)}</td><td className="p-3">{r.bill_number}</td><td className="p-3">{r.due_date}</td><td className="p-3">{money(r.balance_due_minor,r.currency)}</td><td className="p-3 capitalize">{r.status}</td></>}</tr>)}{renderRows.length===0&&<tr><td colSpan={6} className="p-10 text-center text-[#69788B]">No matching records.</td></tr>}</tbody></table></div>}
+ {!loading&&active!=='recurring'&&<div className={`${card} overflow-x-auto`}><table className="w-full text-left text-sm"><thead className="bg-[#F5F8FB] text-xs uppercase text-[#69788B]"><tr>{(active==='direct'?['Date','Vendor','Description','Category','Amount','Method']:['Date','Supplier','Invoice #','Due Date','Balance','Status','Action']).map(v=><th className="p-3" key={v}>{v}</th>)}</tr></thead><tbody>{(renderRows as (ExpenseRow|BillRow)[]).map(r=><tr key={r.id} className="border-t">{'expense_date' in r?<><td className="p-3">{r.expense_date}</td><td className="p-3">{r.supplier_id?supplierName(r.supplier_id):r.supplier_name||'Unlinked legacy record'}</td><td className="p-3">{r.description}</td><td className="p-3">{r.category}</td><td className="p-3 font-semibold">{money(r.amount_minor,r.currency)}</td><td className="p-3">{r.payment_method||'—'}</td></>:<><td className="p-3">{r.issue_date}</td><td className="p-3">{supplierName(r.supplier_id)}</td><td className="p-3">{r.bill_number}</td><td className="p-3">{r.due_date}</td><td className="p-3">{money(r.balance_due_minor,r.currency)}</td><td className="p-3 capitalize">{r.status.replace(/_/g,' ')}</td><td className="p-3"><button type="button" onClick={()=>setSettlementBill(r)} className="rounded bg-[#244A73] px-3 py-2 text-xs text-white">{Number(r.balance_due_minor)>0?'Record Payment':'View Payments'}</button></td></>}</tr>)}{renderRows.length===0&&<tr><td colSpan={active==='bill'?7:6} className="p-10 text-center text-[#69788B]">No matching records.</td></tr>}</tbody></table></div>}
  {payDue&&<PayDue due={payDue} onClose={()=>setPayDue(null)} onPaid={()=>setVersion(n=>n+1)}/>}
+ {settlementBill&&<SupplierBillSettlement key={settlementBill.id} bill={settlementBill} supplierName={supplierName(settlementBill.supplier_id)} onClose={()=>setSettlementBill(null)}/>}
  <p className="text-xs text-[#69788B]">Historical expense records with no supplier link remain visible; new records always require a supplier. No backdated supplier identity is inferred.</p>
+ </div>;
+}
+
+
+function SupplierBillSettlement({
+ bill,
+ supplierName,
+ onClose
+}:{
+ bill:BillRow;
+ supplierName:string;
+ onClose:()=>void;
+}){
+
+ const [full,setFull]=useState(true);
+ const [amount,setAmount]=useState('');
+ const [date,setDate]=useState(nowDate());
+ const [method,setMethod]=useState('mpesa');
+ const [reference,setReference]=useState('');
+ const [balance,setBalance]=useState(Number(bill.balance_due_minor));
+ const [busy,setBusy]=useState(false);
+ const [error,setError]=useState('');
+ const [result,setResult]=useState('');
+ const [history,setHistory]=useState<any[]>([]);
+ const [historyError,setHistoryError]=useState('');
+ const [historyLoading,setHistoryLoading]=useState(true);
+
+ const nonce=useRef(idempotency());
+ const posting=useRef(false);
+ const businessId=useRef(rootId()).current;
+
+ const loadHistory=async()=>{
+  if(!supabase)return;
+  setHistoryLoading(true);
+  setHistoryError('');
+  try{
+   const a=await supabase
+    .from('payment_allocations')
+    .select('transaction_id,amount_minor')
+    .eq('business_id',businessId)
+    .eq('bill_id',bill.id)
+    .limit(1000);
+
+   if(a.error)throw a.error;
+
+   const ids=[...new Set((a.data||[]).map(x=>x.transaction_id))];
+
+   if(!ids.length){
+    setHistory([]);
+    return;
+   }
+
+   const t=await supabase
+    .from('financial_transactions')
+    .select('id,payment_date,payment_method,reference_number,amount_minor,status')
+    .eq('business_id',businessId)
+    .in('id',ids)
+    .order('payment_date',{ascending:false});
+
+   if(t.error)throw t.error;
+
+   setHistory(t.data||[]);
+
+   if(ids.length>=1000)
+    setHistoryError('History limited to 1,000 payment records.');
+  }catch(e:any){
+   setHistoryError(e.message||'Unable to load payment history');
+  }finally{
+   setHistoryLoading(false);
+  }
+ };
+
+ useEffect(()=>{
+  void loadHistory();
+ },[bill.id]);
+
+ const paymentAmount=full?balance:cents(amount);
+
+ const submit=async(e:React.FormEvent)=>{
+  e.preventDefault();
+
+  if(posting.current||result)return;
+
+  setError('');
+
+  if(!supabase){
+   setError('Database connection unavailable');
+   return;
+  }
+
+  if(!Number.isSafeInteger(paymentAmount)||
+     paymentAmount<=0||
+     paymentAmount>balance){
+   setError('Enter a valid amount within the outstanding balance');
+   return;
+  }
+
+  posting.current=true;
+  setBusy(true);
+
+  try{
+
+   const response=await supabase.rpc('zep_pay_supplier_bill',{
+    p_business_id:businessId,
+    p_bill_id:bill.id,
+    p_amount_minor:paymentAmount,
+    p_currency:bill.currency,
+    p_payment_method:method,
+    p_payment_date:date,
+    p_reference_number:reference.trim()||null,
+    p_idempotency_key:nonce.current
+   });
+
+   if(response.error)throw response.error;
+
+   const row=response.data?.[0];
+
+   if(!row)throw Error('No settlement response returned');
+
+   setBalance(Number(row.new_balance_minor));
+   setResult(
+    'Payment recorded successfully. Transaction: '+row.transaction_id
+   );
+
+   changed();
+   void loadHistory();
+
+  }catch(ex:any){
+   setError(ex.message||'Unable to record payment');
+  }finally{
+   posting.current=false;
+   setBusy(false);
+  }
+ };
+
+ return <div
+  className="fixed inset-0 z-[125] flex items-center justify-center bg-[#0D1B33]/60 p-4"
+  role="dialog"
+  aria-modal="true"
+  aria-label="Supplier bill settlement">
+
+  <div className={`${card} w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 space-y-5`}>
+
+   <div className="flex items-start justify-between">
+    <div>
+     <h2 className="text-xl font-semibold text-[#0D1B33]">
+      Supplier Bill Settlement
+     </h2>
+     <p className="text-sm text-[#69788B]">
+      {supplierName} - {bill.bill_number}
+     </p>
+    </div>
+    <button type="button" disabled={busy} onClick={onClose}>
+     Close
+    </button>
+   </div>
+
+   <div className="grid grid-cols-3 gap-3">
+    <div className="rounded border p-3">
+     <p className="text-xs text-[#69788B]">Bill Amount</p>
+     <strong className="text-sm">
+      {money(bill.amount_minor,bill.currency)}
+     </strong>
+    </div>
+    <div className="rounded border p-3">
+     <p className="text-xs text-[#69788B]">Paid</p>
+     <strong className="text-sm text-green-700">
+      {money(Number(bill.amount_minor)-balance,bill.currency)}
+     </strong>
+    </div>
+    <div className="rounded border p-3">
+     <p className="text-xs text-[#69788B]">Outstanding</p>
+     <strong className="text-sm">
+      {money(balance,bill.currency)}
+     </strong>
+    </div>
+   </div>
+
+   {error&&<p role="alert" className="rounded bg-red-50 p-3 text-sm text-red-700">
+    {error}
+   </p>}
+
+   {result&&<p role="status" className="rounded bg-green-50 p-3 text-sm text-green-800">
+    {result}
+   </p>}
+
+   {balance>0&&!result&&<form
+     onSubmit={submit}
+     className="space-y-4">
+
+    <label className="flex items-center gap-2 text-sm">
+     <input type="checkbox"
+      checked={full}
+      disabled={busy}
+      onChange={e=>setFull(e.target.checked)}/>
+     Settle full outstanding balance
+    </label>
+
+    {!full&&<label className="block text-sm">
+     Partial payment ({bill.currency})
+     <input
+      className={input}
+      required
+      type="number"
+      min="0.01"
+      max={balance/100}
+      step="0.01"
+      disabled={busy}
+      value={amount}
+      onChange={e=>setAmount(e.target.value)}/>
+    </label>}
+
+    <div className="grid grid-cols-2 gap-3">
+     <label className="text-sm">
+      Payment method
+      <select className={input}
+       disabled={busy}
+       value={method}
+       onChange={e=>setMethod(e.target.value)}>
+       {paymentMethods.map(([label,value])=>
+        <option key={value} value={value}>{label}</option>
+       )}
+      </select>
+     </label>
+
+     <label className="text-sm">
+      Payment date
+      <input className={input}
+       type="date"
+       required
+       disabled={busy}
+       min={bill.issue_date}
+       max={nowDate()}
+       value={date}
+       onChange={e=>setDate(e.target.value)}/>
+     </label>
+    </div>
+
+    <label className="block text-sm">
+     Payment reference
+     <input className={input}
+      disabled={busy}
+      maxLength={200}
+      required={['mpesa','bank_transfer','card'].includes(method)}
+      value={reference}
+      onChange={e=>setReference(e.target.value)}/>
+    </label>
+
+    <div className="rounded bg-[#F1F5FA] p-3 text-sm">
+     Amount to record:
+     <strong className="ml-2">
+      {money(paymentAmount||0,bill.currency)}
+     </strong>
+     <p className="mt-1 text-xs text-[#69788B]">
+      Records a completed payment. Does not transfer money.
+     </p>
+    </div>
+
+    <div className="flex justify-end gap-2">
+     <button type="button"
+      disabled={busy}
+      onClick={onClose}
+      className="rounded border px-4 py-2 text-sm">
+      Cancel
+     </button>
+     <button type="submit"
+      disabled={busy}
+      className="rounded bg-[#244A73] px-4 py-2 text-sm text-white disabled:opacity-50">
+      {busy?'Recording...':'Confirm Payment'}
+     </button>
+    </div>
+   </form>}
+
+   {balance===0&&<p className="rounded bg-green-50 p-3 text-sm text-green-800">
+    Fully settled
+   </p>}
+
+   <div className="border-t pt-4">
+    <h3 className="mb-3 font-semibold">Payment History</h3>
+
+    {historyLoading&&<p className="text-sm">Loading payments...</p>}
+
+    {historyError&&<p role="alert" className="text-sm text-red-700">
+     {historyError}
+    </p>}
+
+    {!historyLoading&&!history.length&&
+     <p className="text-sm text-[#69788B]">
+      No recorded payments.
+     </p>
+    }
+
+    <div className="space-y-2">
+     {history.map(t=>
+      <div key={t.id}
+       className="flex justify-between gap-3 rounded border p-3 text-sm">
+       <div>
+        <strong>
+         {paymentMethods.find(x=>x[1]===t.payment_method)?.[0]||t.payment_method}
+        </strong>
+        <p className="text-xs text-[#69788B]">
+         {t.payment_date} - {t.reference_number||'No reference'}
+        </p>
+        <p className="text-xs text-[#69788B]">
+         {t.status}
+        </p>
+       </div>
+       <strong>{money(t.amount_minor,bill.currency)}</strong>
+      </div>
+     )}
+    </div>
+
+   </div>
+  </div>
  </div>;
 }

@@ -189,7 +189,7 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       id:it.id,description:it.description,quantity:Number(it.quantity),unitPriceCents:Number(it.unit_price_minor),
       taxRatePercent:Number(it.tax_rate_percent),discountPercent:Number(it.discount_percent)})),
     subtotalCents:Number(r.subtotal_minor),discountCents:Number(r.discount_minor),taxCents:Number(r.tax_minor),
-    totalCents:Number(r.total_minor),status:r.status,notes:r.notes||undefined,createdAt:r.created_at,
+    totalCents:Number(r.total_minor),status:r.status,notes:r.notes||undefined,createdAt:r.created_at,updatedAt:r.updated_at,revisedFromId:r.revised_from_id||undefined,
     businessSnapshot:r.business_snapshot||undefined,customerSnapshot:r.customer_snapshot||undefined
   });
   async function refreshQuotations(){

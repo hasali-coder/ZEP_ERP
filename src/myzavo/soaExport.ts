@@ -29,7 +29,7 @@ function groups(a:StatementExport){
   });
 }
 export async function downloadSOAPdf(a:StatementExport):Promise<void>{
-  const doc=await PDFDocument.create();const regular=await doc.embedFont(StandardFonts.Helvetica);
+  const doc=await PDFDocument.create();doc.setCreator('Zep ERP');doc.setProducer('Zep ERP');const regular=await doc.embedFont(StandardFonts.Helvetica);
   const bold=await doc.embedFont(StandardFonts.HelveticaBold);const navy=rgb(.06,.11,.20),muted=rgb(.40,.46,.54),line=rgb(.79,.84,.89),light=rgb(.95,.97,.99);
   const pageWidth=842,pageHeight=595,left=36,right=806;let pg=doc.addPage([pageWidth,pageHeight]);let y=0;let pageNumber=0;
   const draw=(text:string,x:number,atY:number,size=9,isBold=false,align:'left'|'right'='left')=>{

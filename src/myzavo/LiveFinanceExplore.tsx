@@ -56,7 +56,7 @@ function useFinanceDocuments(){
 }
 async function receiptAllocations(tId:string,businessId:string):Promise<{allocations:Allocation[];invoices:LinkedInvoice[]}>{
  if(!supabase)throw Error('Supabase unavailable');
- const {data,error}=await supabase.from('payment_allocations').select('invoice_id,amount_minor').eq('business_id',businessId).eq('transaction_id',tId);
+ const {data,error}=await supabase.from('payment_allocations').select('invoice_id,amount_minor').eq('business_id',businessId).eq('transaction_id',tId).is('credit_applied_on',null);
  if(error)throw error;const allocations=(data||[]) as Allocation[];
  const ids=[...new Set(allocations.map(a=>a.invoice_id).filter((x):x is string=>!!x))];
  if(!ids.length)return {allocations,invoices:[]};
@@ -64,7 +64,7 @@ async function receiptAllocations(tId:string,businessId:string):Promise<{allocat
  if(resp.error)throw resp.error;return {allocations,invoices:(resp.data||[]) as LinkedInvoice[]};
 }
 async function makeDocument(business:BusinessInfo,tx:Transaction,receipt:Receipt|null,customer:string,links:{allocations:Allocation[];invoices:LinkedInvoice[]}){
- const doc=await PDFDocument.create();const normal=await doc.embedFont(StandardFonts.Helvetica);const bold=await doc.embedFont(StandardFonts.HelveticaBold);
+ const doc=await PDFDocument.create();doc.setCreator('Zep ERP');doc.setProducer('Zep ERP');const normal=await doc.embedFont(StandardFonts.Helvetica);const bold=await doc.embedFont(StandardFonts.HelveticaBold);
  let pg=doc.addPage([595,842]);let y=790;
  const draw=(value:unknown,x:number,size=10,strong=false,color=ink)=>{pg.drawText(pdfText(value),{x,y,size,font:strong?bold:normal,color,maxWidth:500-x+48});};
  const line=()=>pg.drawLine({start:{x:46,y},end:{x:549,y},thickness:.7,color:rule});
@@ -85,7 +85,7 @@ async function makeDocument(business:BusinessInfo,tx:Transaction,receipt:Receipt
  draw(`Reference: ${tx.reference_number||'Not provided'}`,46);y-=18;
  draw(`Description: ${tx.description}`,46);y-=25;
  if(receipt){draw(`Allocated: ${mon(Number(receipt.allocated_minor),receipt.currency)}`,46);y-=18;
- draw(`Unapplied credit: ${mon(Number(receipt.unapplied_minor),receipt.currency)}`,46);y-=22;}
+ draw(`Unapplied credit at issue: ${mon(Number(receipt.unapplied_minor),receipt.currency)}`,46);y-=22;}
  if(links.allocations.length){line();y-=24;draw('INVOICE ALLOCATIONS',46,11,true);y-=23;
  for(const a of links.allocations.slice(0,15)){
  const label=links.invoices.find(i=>i.id===a.invoice_id)?.invoice_number||a.invoice_id||'Invoice';
@@ -98,7 +98,7 @@ async function makeDocument(business:BusinessInfo,tx:Transaction,receipt:Receipt
  return doc.save();
 }
 async function makeLedgerPdf(business:BusinessInfo,rows:Transaction[],contactName:(r:Transaction)=>string){
- const doc=await PDFDocument.create();const normal=await doc.embedFont(StandardFonts.Helvetica);const bold=await doc.embedFont(StandardFonts.HelveticaBold);
+ const doc=await PDFDocument.create();doc.setCreator('Zep ERP');doc.setProducer('Zep ERP');const normal=await doc.embedFont(StandardFonts.Helvetica);const bold=await doc.embedFont(StandardFonts.HelveticaBold);
  let page=doc.addPage([595,842]),y=798;
  const start=()=>{page.drawText(pdfText(business.name),{x:40,y,size:17,font:bold,color:ink});y-=21;
  page.drawText('Financial transactions | filtered export', {x:40,y,size:11,font:bold,color:ink});y-=22;
@@ -146,7 +146,7 @@ export function LiveReceiptsExplorer(){
  {limited&&<p role="alert" className="text-sm p-3 rounded bg-amber-50 text-amber-800">Showing the latest 10,000 records. Narrow the period or ask for paginated reporting before relying on an exhaustive export.</p>}
  <div className={`${panel} overflow-x-auto`}>{busy?<p className="p-6 text-sm">Loading receipts from Supabase…</p>:error?<p role="alert" className="p-5 text-red-700">{error}</p>:rows.length===0?<p className="p-12 text-center text-sm text-[#69788B]">No receipts match the selected filters.</p>:<table className="w-full text-sm text-left"><thead className="bg-[#F6F8FB] text-xs uppercase text-[#69788B]"><tr>{['Receipt ID','Issued (EAT)','Customer','Received','Method','Reference','Actions'].map(x=><th key={x} className="p-3">{x}</th>)}</tr></thead><tbody>{rows.map(r=><tr key={r.id} className="border-t hover:bg-[#F7FAFD]"><td className="p-3"><button className="text-[#244A73] font-semibold underline underline-offset-2" onClick={()=>setChosen(r)}>{r.receipt_number}</button></td><td className="p-3 whitespace-nowrap">{east(r.issued_at)}</td><td className="p-3">{nameOf(contacts,r.customer_id)}</td><td className="p-3 font-medium whitespace-nowrap">{mon(Number(r.received_minor),r.currency)}</td><td className="p-3">{method(txOf(r)?.payment_method||'')}</td><td className="p-3">{txOf(r)?.reference_number||'—'}</td><td className="p-3 whitespace-nowrap"><button className="text-[#244A73] underline mr-3" onClick={()=>setChosen(r)}>View</button><button className="text-[#244A73] underline mr-3" onClick={()=>void getPdf(r)}>PDF</button><button className="text-[#244A73] underline" onClick={()=>void getPdf(r,true)}>Print</button></td></tr>)}</tbody></table>}</div>
  {chosen&&<FinanceModal heading={`Receipt ${chosen.receipt_number}`} onClose={()=>setChosen(null)}><div className="mb-4"><h3 className="text-xl font-semibold">{business.name}</h3><p className="text-xs text-[#69788B]">{[business.address,business.city,business.country].filter(Boolean).join(', ')}</p></div>
- {detail('Receipt number',chosen.receipt_number)}{detail('Issued (EAT)',east(chosen.issued_at))}{detail('Customer',nameOf(contacts,chosen.customer_id))}{detail('Amount received',mon(Number(chosen.received_minor),chosen.currency))}{detail('Applied',mon(Number(chosen.allocated_minor),chosen.currency))}{detail('Unapplied customer credit',mon(Number(chosen.unapplied_minor),chosen.currency))}{detail('Payment method',method(txOf(chosen)?.payment_method||''))}{detail('Transaction reference',txOf(chosen)?.reference_number||'—')}{detail('Status',chosen.status)}
+ {detail('Receipt number',chosen.receipt_number)}{detail('Issued (EAT)',east(chosen.issued_at))}{detail('Customer',nameOf(contacts,chosen.customer_id))}{detail('Amount received',mon(Number(chosen.received_minor),chosen.currency))}{detail('Applied',mon(Number(chosen.allocated_minor),chosen.currency))}{detail('Unapplied credit at issue',mon(Number(chosen.unapplied_minor),chosen.currency))}{detail('Payment method',method(txOf(chosen)?.payment_method||''))}{detail('Transaction reference',txOf(chosen)?.reference_number||'—')}{detail('Status',chosen.status)}
  <div className="mt-5"><h4 className="font-semibold text-sm mb-2">Invoice allocations</h4>{detailError?<p role="alert" className="text-red-700 text-sm">{detailError}</p>:links.allocations.length===0?<p className="text-xs text-[#69788B]">No invoice allocations found.</p>:<div className="space-y-2">{links.allocations.map((a,i)=><div className="flex justify-between text-sm border-b py-2" key={i}><span>{links.invoices.find(v=>v.id===a.invoice_id)?.invoice_number||'Invoice'}</span><strong>{mon(Number(a.amount_minor),chosen.currency)}</strong></div>)}</div>}</div>
  <div className="mt-6 flex flex-wrap gap-2 justify-end"><button type="button" className="border rounded px-4 py-2 text-sm" onClick={()=>void getPdf(chosen,true)}><Printer className="w-4 h-4 inline mr-1"/>Print receipt</button><button type="button" className="bg-[#244A73] text-white rounded px-4 py-2 text-sm" onClick={()=>void getPdf(chosen)}><Download className="w-4 h-4 inline mr-1"/>Export PDF</button></div></FinanceModal>}
  </div>;

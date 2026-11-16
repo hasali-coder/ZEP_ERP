@@ -6,12 +6,17 @@ import { Header } from './components/common/Header';
 import { OverviewView } from './components/overview/OverviewView';
 import { InvoiceListView } from './components/invoices/InvoiceListView';
 import { InvoiceFormModal } from './components/invoices/InvoiceFormModal';
+import {LiveSettingsView} from './myzavo/LiveFinance';
+import {LiveTransactionsExplorer as TransactionListView} from './myzavo/LiveFinanceExplore';
+import {ManualReconciliation} from './myzavo/ManualReconciliation';
+import {FinancialPeriods} from './myzavo/FinancialPeriods';
+import {TeamAccess} from './myzavo/TeamAccess';
 import { InvoiceViewModal } from './components/invoices/InvoiceViewModal';
 import { CreditNotesView } from './components/creditnotes/CreditNotesView';
 import { QuotationListView } from './components/quotations/QuotationListView';
 import { QuotationFormModal } from './components/quotations/QuotationFormModal';
 import { QuotationViewModal } from './components/quotations/QuotationViewModal';
-import {LiveExpensesView as ExpenseListView,LiveExpenseModal as ExpenseModal,LiveTransactionsView as TransactionListView,LiveReportsView as ReportsView,LiveSettingsView as SettingsView,LiveReceiptsView,LivePaymentModal as PaymentModal} from './myzavo/LiveFinance';
+import {LiveExpensesView as ExpenseListView,LiveExpenseModal as ExpenseModal,LiveReportsView as ReportsView,LiveReceiptsView,LivePaymentModal as PaymentModal} from './myzavo/LiveFinance';
 import { ContactListView } from './components/contacts/ContactListView';
 import { ContactModal } from './components/contacts/ContactModal';
 import { CreateBusinessModal } from './components/settings/CreateBusinessModal';
@@ -19,7 +24,7 @@ import { Invoice, Quotation, Contact, Expense, ContactType } from './types';
 import type {ReportType} from './components/reports/ReportsView';
 
 function MainApp() {
-  const { invoices, quotations } = useFinancial();
+  const { invoices, quotations, activeBusiness } = useFinancial();
 
   const [currentTab, setCurrentTab] = useState<NavTab>(() => new URLSearchParams(window.location.search).has('contact') ? 'contacts' : 'overview');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -243,7 +248,10 @@ function MainApp() {
           )}
 
           {currentTab === 'integrations' && <IntegrationsPreview />}
-          {currentTab === 'settings' && <SettingsView />}
+          {currentTab === 'settings' && <LiveSettingsView />}
+          {currentTab === 'reconciliation' && <ManualReconciliation key={activeBusiness.id} businessId={activeBusiness.id}/>}
+          {currentTab === 'financial_periods' && <FinancialPeriods key={activeBusiness.id} businessId={activeBusiness.id}/>}
+          {currentTab === 'team_access' && <TeamAccess key={activeBusiness.id} businessId={activeBusiness.id}/>}
         </main>
       </div>
 

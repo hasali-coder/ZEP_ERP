@@ -1,14 +1,14 @@
 import React from 'react';
-import {LayoutDashboard,FileText,FileCheck2,FileMinus2,Receipt,ArrowLeftRight,Users2,BarChart3,Settings,Building2,ArrowRight,X,Wallet} from 'lucide-react';
+import {LayoutDashboard,FileText,FileCheck2,FileMinus2,Receipt,ArrowLeftRight,Users2,BarChart3,Settings,Building2,ArrowRight,X,Wallet,Landmark,CalendarDays,ShieldCheck} from 'lucide-react';
 import {useFinancial} from '../../context/FinancialContext';
-export type NavTab='overview'|'invoices'|'credit_notes'|'quotations'|'receipts'|'expenses'|'transactions'|'contacts'|'reports'|'settings' | 'integrations';
+export type NavTab='overview'|'invoices'|'credit_notes'|'quotations'|'receipts'|'expenses'|'transactions'|'contacts'|'reports'|'settings' | 'integrations' | 'reconciliation' | 'financial_periods' | 'team_access';
 interface SidebarProps {currentTab:NavTab;onSelectTab:(tab:NavTab)=>void;isOpenMobile:boolean;onCloseMobile:()=>void;onOpenCreateBusinessModal:()=>void;}
 const groups:{title:string;links:{id:NavTab;label:string;icon:any}[]}[]=[
  {title:'WORKSPACE',links:[{id:'overview',label:'Overview',icon:LayoutDashboard}]},
  {title:'SALES & RECEIVABLES',links:[{id:'quotations',label:'Quotations',icon:FileCheck2},{id:'invoices',label:'Invoices',icon:FileText},{id:'credit_notes',label:'Credit Notes',icon:FileMinus2},{id:'receipts',label:'Receipts',icon:Receipt}]},
- {title:'PAYMENTS & EXPENSES',links:[{id:'transactions',label:'Transactions',icon:ArrowLeftRight},{id:'expenses',label:'Expenses & Bills',icon:Wallet}]},
+ {title:'PAYMENTS & EXPENSES',links:[{id:'transactions',label:'Transactions',icon:ArrowLeftRight},{id:'expenses',label:'Expenses & Bills',icon:Wallet},{id:'reconciliation',label:'Reconciliation',icon:Landmark}]},
  {title:'DIRECTORY & REPORTS',links:[{id:'contacts',label:'Customers & Vendors',icon:Users2},{id:'reports',label:'Financial Reports & SOA',icon:BarChart3}]},
- {title:'ADMINISTRATION',links:[{id:'settings',label:'Settings',icon:Settings}]}
+ {title:'ADMINISTRATION',links:[{id:'settings',label:'Settings',icon:Settings},{id:'financial_periods',label:'Financial Periods',icon:CalendarDays},{id:'team_access',label:'Team & Access',icon:ShieldCheck}]}
 ];
 export const Sidebar:React.FC<SidebarProps>=({currentTab,onSelectTab,isOpenMobile,onCloseMobile})=>{
  const {activeBusiness}=useFinancial();

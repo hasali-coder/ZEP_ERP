@@ -22,7 +22,7 @@ const wrap=(text:string,font:PDFFont,size:number,maxWidth:number)=>{
 export async function downloadInvoicePdf(invoice:Invoice, customer:Contact|undefined, business:Business, options?:{kind?:'invoice'|'quotation'|'credit_note';originalInvoiceNumber?:string}){
   const isQuote=options?.kind==='quotation';
   const isCredit=options?.kind==='credit_note';
-  const doc=await PDFDocument.create();
+  const doc=await PDFDocument.create();doc.setCreator('Zep ERP');doc.setProducer('Zep ERP');
   const normal=await doc.embedFont(StandardFonts.Helvetica);
   const bold=await doc.embedFont(StandardFonts.HelveticaBold);
   const pw=595.28, ph=841.89, left=45, right=550;
@@ -33,7 +33,7 @@ export async function downloadInvoicePdf(invoice:Invoice, customer:Contact|undef
     if(invoice.status==='draft')page.drawText('DRAFT',{
       x:90,y:330,font:bold,size:118,rotate:degrees(35),opacity:.12,color:rgb(.35,.43,.55)
     });
-    page.drawText('MYZAVO  /  FINANCIAL DOCUMENT',{x:left,y:ph-28,font:bold,size:8,color:muted});
+    page.drawText('ZEP ERP  /  FINANCIAL DOCUMENT',{x:left,y:ph-28,font:bold,size:8,color:muted});
     page.drawLine({start:{x:left,y:ph-37},end:{x:right,y:ph-37},color:border,thickness:.6});
   };
   const text=(value:unknown,x:number,yy:number,size=9,weight:PDFFont=normal,color=navy)=>{

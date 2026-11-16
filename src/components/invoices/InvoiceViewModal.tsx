@@ -10,7 +10,7 @@ export const InvoiceViewModal: React.FC<{
   isOpen:boolean;onClose:()=>void;invoice:Invoice|null;
   onRecordPayment:(invoiceId:string)=>void;onEditInvoice:(invoice:Invoice)=>void;
   onCreditNote?:()=>void;
-}> = ({isOpen,onClose,invoice,onCreditNote,onRecordPayment})=>{
+}> = ({isOpen,onClose,invoice,onCreditNote,onRecordPayment,onEditInvoice})=>{
   const {activeBusiness,customers,cancelInvoice,issueFullCredit,issueInvoice}=useFinancial();
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState('');
@@ -41,6 +41,7 @@ export const InvoiceViewModal: React.FC<{
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={async()=>{setError('');try{await downloadInvoicePdf(invoice,customer,activeBusiness);}catch(e){setError(e instanceof Error?e.message:'PDF failed');}}}
             className="rounded-md bg-[#244A73] px-3 py-2 text-white text-xs font-semibold"><Download className="inline w-4 h-4 mr-1"/>Download PDF</button>
+          {invoice.status==='draft'&&<button type="button" disabled={busy} onClick={()=>onEditInvoice(invoice)} className="rounded-md border px-3 py-2 text-xs font-semibold">Edit draft</button>}
           {invoice.status==='draft'&&<button type="button" disabled={busy} onClick={async()=>{
             if(!confirm(`Issue ${invoice.invoiceNumber}? This changes the draft into an issued invoice.`))return;
             setBusy(true);setError('');

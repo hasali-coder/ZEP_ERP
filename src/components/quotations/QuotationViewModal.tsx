@@ -9,10 +9,12 @@ import {Download,Loader2} from 'lucide-react';
 export const QuotationViewModal:React.FC<{
  isOpen:boolean;onClose:()=>void;quotation:Quotation|null;
  onEditQuotation:(quotation:Quotation)=>void;onInvoiceCreated:(invoiceId:string)=>void;
-}>=({isOpen,onClose,quotation,onInvoiceCreated})=>{
- const {customers,activeBusiness,setQuotationStatus,refreshInvoices,refreshQuotations}=useFinancial();
+}>=({isOpen,onClose,quotation,onInvoiceCreated,onEditQuotation})=>{
+ const {customers,activeBusiness,setQuotationStatus,refreshInvoices,refreshQuotations,quotations}=useFinancial();
  const [busy,setBusy]=useState(false);const [error,setError]=useState('');
  if(!quotation)return null;
+ const successor=quotations.find(q=>q.revisedFromId===quotation.id);
+ const predecessor=quotations.find(q=>q.id===quotation.revisedFromId);
  const customer=customers.find(c=>c.id===quotation.customerId);
  const b=quotation.businessSnapshot||{};const c=quotation.customerSnapshot||{};
  const businessName=String(b.name||activeBusiness.name);
@@ -37,8 +39,9 @@ export const QuotationViewModal:React.FC<{
  return <Modal isOpen={isOpen} onClose={onClose} title={`Quotation ${quotation.quoteNumber}`} maxWidth="4xl">
   <div className="space-y-5">
    <div className="flex justify-between items-center gap-2 flex-wrap border-b pb-4">
-    <span className="rounded-md bg-[#EDF4FA] px-3 py-1 text-xs uppercase font-semibold">{quotation.status}</span>
+    <span className="rounded-md bg-[#EDF4FA] px-3 py-1 text-xs uppercase font-semibold">{successor?'Superseded':quotation.status}</span>
     <div className="flex items-center gap-2 flex-wrap">
+     {!successor&&['draft','sent','declined'].includes(quotation.status)&&<button disabled={busy} onClick={()=>onEditQuotation(quotation)} className="border rounded px-3 py-2 text-xs font-semibold">{quotation.status==='draft'?'Edit draft':'Create revision'}</button>}
      {quotation.status==='draft'&&<button disabled={busy} onClick={()=>void transition('sent')} className="bg-[#1F806F] text-white px-3 py-2 rounded text-xs font-semibold">Issue quotation</button>}
      {quotation.status==='sent'&&<><button disabled={busy} onClick={()=>void transition('accepted')} className="bg-[#244A73] text-white px-3 py-2 rounded text-xs font-semibold">Mark accepted</button><button disabled={busy} onClick={()=>void transition('declined')} className="border px-3 py-2 rounded text-xs">Mark declined</button></>}
      {quotation.status==='accepted'&&<button disabled={busy} onClick={async()=>{
@@ -53,6 +56,7 @@ export const QuotationViewModal:React.FC<{
      <button disabled={busy} onClick={async()=>{setBusy(true);setError('');try{await downloadQuotationPdf(quotation,customer,activeBusiness);}catch(e){setError(e instanceof Error?e.message:'PDF export failed');}finally{setBusy(false);}}} className="border px-3 py-2 rounded text-xs font-semibold"><Download className="inline w-4 h-4 mr-1"/>Download PDF</button>
     </div>
    </div>
+   {(successor||predecessor)&&<p className="rounded border bg-[#F1F5FA] p-3 text-sm">{predecessor?`Revision of ${predecessor.quoteNumber}. `:''}{successor?`Superseded by ${successor.quoteNumber}. Open it in Quotations.`:''}</p>}
    {busy&&<span className="text-sm text-[#69788B]"><Loader2 className="inline h-4 w-4 animate-spin"/> Processing...</span>}
    {error&&<p role="alert" className="p-3 bg-red-50 text-red-700 rounded">{error}</p>}
    <article className="border rounded-lg p-6 md:p-9 bg-white space-y-6 text-sm">

@@ -4,6 +4,8 @@ import {supabase} from './supabase';
 import {FinancialAgeingDetail,ManagementPnL,LiveReportCardDrilldown} from './ReportsExpansion';
 import {LiveTransactionsExplorer,LiveReceiptsExplorer} from './LiveFinanceExplore';
 import {LiveReportAnalytics} from './LiveReportAnalytics';
+import {ManualReconciliation} from './ManualReconciliation';
+import {CustomerCredits} from './CustomerCredits';
 import {LegacyAgeingLive,LegacyStatementLive} from './LiveLegacyReports';
 import {downloadSOAPdf,downloadSOAWord} from './soaExport';
 import {useFinancial} from '../context/FinancialContext';
@@ -43,7 +45,8 @@ function StateLine({loading,error}:{loading:boolean;error:string}){
 export {VendorExpenseModal as LiveExpenseModal, VendorExpensesView as LiveExpensesView} from './VendorExpenses';
 
 export function LiveTransactionsView({onOpenPaymentModal}:any){
- return <LiveTransactionsExplorer onOpenPaymentModal={onOpenPaymentModal}/>;
+ const [tab,setTab]=useState<'ledger'|'reconciliation'>('ledger');
+ return <div className="space-y-4"><div className={`${box} p-3 flex gap-2`}>{(['ledger','reconciliation'] as const).map(k=><button key={k} type="button" className={`rounded px-4 py-2 text-sm ${tab===k?'bg-[#244A73] text-white':'bg-[#F1F5FA] text-[#244A73]'}`} onClick={()=>setTab(k)}>{k==='ledger'?'Transactions':'Reconciliation'}</button>)}</div>{tab==='ledger'?<LiveTransactionsExplorer onOpenPaymentModal={onOpenPaymentModal}/>:<ManualReconciliation key={rootId()} businessId={rootId()}/>}</div>;
 }
 
 export function LiveSettingsView(){
@@ -85,22 +88,21 @@ export function LiveReportsView({initialReportType='analytics',initialCustomerId
  const {data,error:e}=await supabase.rpc('myzavo_report_summary',{p_business_id:rootId(),p_from:from,p_to:to});if(!alive)return;setSummary(data);setError(e?.message||'');setLoading(false);
  };void load();window.addEventListener('myzavo:finance-updated',load);return()=>{alive=false;window.removeEventListener('myzavo:finance-updated',load);};},[from,to]);
  useEffect(()=>{setSoaReady('');setSoaExportError('');if(report!=='statement_of_account'||!customerId||!supabase)return;let alive=true;
- const load=async()=>{const [inv,cr,pa,tx]=await Promise.all([
+ const load=async()=>{const [inv,cr,tx]=await Promise.all([
  supabase!.from('invoices').select('id,invoice_number,issue_date,currency,total_minor,status').eq('business_id',rootId()).eq('customer_id',customerId).lte('issue_date',to),
  supabase!.from('credit_notes').select('invoice_id,credit_number,issue_date,currency,amount_minor,status').eq('business_id',rootId()).eq('customer_id',customerId).lte('issue_date',to),
- supabase!.from('payment_allocations').select('invoice_id,transaction_id,amount_minor').eq('business_id',rootId()),
- supabase!.from('financial_transactions').select('id,payment_date,currency,status,reference_number').eq('business_id',rootId()).eq('contact_id',customerId).lte('payment_date',to)
+ supabase!.from('financial_transactions').select('id,payment_date,currency,status,reference_number,direction,amount_minor').eq('business_id',rootId()).eq('contact_id',customerId).lte('payment_date',to)
  ]);
- if(!alive)return;const fetchError=[inv.error,cr.error,pa.error,tx.error].find(Boolean);if(fetchError){setSoaExportError(fetchError.message);return;}const allInvoices=inv.data||[];const txmap=new Map((tx.data||[]).map((r:any)=>[r.id,r]));const allowed=new Set(allInvoices.map((r:any)=>r.id));
+ if(!alive)return;const fetchError=[inv.error,cr.error,tx.error].find(Boolean);if(fetchError){setSoaExportError(fetchError.message);return;}const allInvoices=inv.data||[];
  const lines:any[]=[];
  for(const i of allInvoices){const hasCredit=(cr.data||[]).some((c:any)=>c.invoice_id===i.id&&c.status==='issued');if(i.status==='draft'||(i.status==='cancelled'&&!hasCredit))continue;lines.push({date:i.issue_date,ref:i.invoice_number,currency:i.currency,debit:Number(i.total_minor),credit:0,description:'Invoice issued'});}
  for(const c of cr.data||[]){if(c.status==='issued')lines.push({date:c.issue_date,ref:c.credit_number,currency:c.currency,debit:0,credit:Number(c.amount_minor),description:'Credit note issued'});}
- for(const a of pa.data||[]){if(!allowed.has(a.invoice_id))continue;const t:any=txmap.get(a.transaction_id);if(t&&t.status==='posted')lines.push({date:t.payment_date,ref:t.reference_number||'Payment',currency:t.currency,debit:0,credit:Number(a.amount_minor),description:'Payment received'});}
+ for(const t of tx.data||[]){if(t.status!=='posted')continue;const incoming=t.direction==='in';lines.push({date:t.payment_date,ref:t.reference_number||t.id.slice(0,8),currency:t.currency,debit:incoming?0:Number(t.amount_minor),credit:incoming?Number(t.amount_minor):0,description:incoming?'Payment received':'Customer refund / payment out'});}
  lines.sort((a,b)=>a.date.localeCompare(b.date)||a.ref.localeCompare(b.ref));setSoa(lines);setSoaReady(customerId+'|'+to);
  };void load();return()=>{alive=false;};},[report,customerId,to]);
  const tabs=[['analytics','Analytics'],['income','Income'],['expenses','Expenses'],['cash_flow','Cash flow'],['outstanding_invoices','Outstanding Receivables'],['ar_aging','AR Ageing'],['ap_aging','AP Ageing'],['pnl','Profit & Loss'],['ap_bills','Payables'],['statement_of_account','Customer SOA']];
  const byCurrency:any[] = summary?.by_currency||[];
- const cells:Record<string,[string,string]>= {income:['Net billed','net_billed_minor'],expenses:['Paid expenses','expenses_minor'],cash_flow:['Net cash movement','net_cash_flow_minor'],outstanding_invoices:['Outstanding invoices','receivables_minor'],ap_bills:['Outstanding supplier bills','payables_minor']};
+ const cells:Record<string,[string,string]>= {income:['Net billed','net_billed_minor'],expenses:['Paid expenses','expenses_minor'],cash_flow:['Net cash movement','net_cash_flow_minor'],outstanding_invoices:['Outstanding invoices','receivables_minor'],ap_bills:['Outstanding payables','payables_minor']};
  const [title,key]=cells[report]||['Estimated operating surplus','net_billed_minor'];
 
  const exportStatement=async(format:'pdf'|'word')=>{
@@ -131,7 +133,13 @@ export function LiveReportsView({initialReportType='analytics',initialCustomerId
 }
 
 export function LiveReceiptsView(){
- return <LiveReceiptsExplorer/>;
+ const [section,setSection]=useState<'receipts'|'credits'>('receipts');
+ return <div className="space-y-4">
+  <div className="flex gap-2 rounded-xl border bg-white p-3">
+   {(['receipts','credits'] as const).map(k=><button type="button" key={k} onClick={()=>setSection(k)} className={`rounded px-4 py-2 text-sm ${section===k?'bg-[#244A73] text-white':'bg-[#F1F5FA] text-[#244A73]'}`}>{k==='receipts'?'Receipts':'Customer Credits'}</button>)}
+  </div>
+  {section==='credits'?<CustomerCredits key={rootId()} businessId={rootId()}/>:<LiveReceiptsExplorer/>}
+ </div>;
 }
 
 export function LivePaymentModal({isOpen,onClose,targetInvoiceId,targetBillId}:any){

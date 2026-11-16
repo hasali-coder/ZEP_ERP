@@ -90,6 +90,8 @@ export interface Quotation {
   id: string;
   businessId: string;
   quoteNumber: string; // e.g. QUO-2026-001
+  updatedAt?: string;
+  revisedFromId?: string;
   customerId: string;
   customerName: string;
   issueDate: string; // YYYY-MM-DD
